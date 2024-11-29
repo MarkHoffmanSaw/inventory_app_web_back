@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	host     = "Ubuntu"
-	port     = 5432
+	host     = "localhost"
+	port     = 5433
 	user     = "postgres"
 	password = "postgres"
 	dbname   = "tag_db"

@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"log"
 	"strconv"
 )
 
@@ -18,7 +19,12 @@ type MaterialTemplate struct {
 	IsActive     bool    `json:"isActive"`
 }
 
+func fetchMaterialTypes() []string {
+	return []string{"Card", "Envelope"}
+}
+
 func sendMaterial(material MaterialTemplate, db *sql.DB) error {
+	log.Println(material)
 	qty, _ := strconv.Atoi(material.Qty)
 	minQty, _ := strconv.Atoi(material.MinQty)
 	maxQty, _ := strconv.Atoi(material.MaxQty)

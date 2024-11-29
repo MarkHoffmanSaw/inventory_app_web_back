@@ -6,7 +6,7 @@ import (
 )
 
 type CustomerJSON struct {
-	Name string `json:"name"`
+	Name string `json:"customerName"`
 	Code string `json:"customerCode"`
 }
 
@@ -17,7 +17,6 @@ type Customer struct {
 }
 
 func addCustomer(customer CustomerJSON, db *sql.DB) error {
-	log.Println(customer)
 	_, err := db.Exec("INSERT INTO customers (name, customer_code) VALUES ($1,$2)",
 		customer.Name, customer.Code)
 
@@ -49,6 +48,5 @@ func fetchCustomers(db *sql.DB) ([]Customer, error) {
 		return customers, err
 	}
 
-	log.Println(customers)
 	return customers, nil
 }
