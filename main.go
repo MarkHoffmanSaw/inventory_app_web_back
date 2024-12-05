@@ -10,11 +10,35 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func createCustomer(w http.ResponseWriter, r *http.Request) {
+func main() {
+	router := mux.NewRouter()
+	origins := handlers.AllowedOrigins([]string{"*"})
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
+	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
+
+	// Routes
+	router.HandleFunc("/customers", createCustomerHandler).Methods("POST")
+	router.HandleFunc("/customers", getCustomersHandler).Methods("GET")
+
+	router.HandleFunc("/materials", createMaterialHandler).Methods("POST")
+	router.HandleFunc("/material_types", getMaterialTypesHandler).Methods("GET")
+
+	router.HandleFunc("/incoming_materials", sendMaterialHandler).Methods("POST")
+	router.HandleFunc("/incoming_materials", getIncomingMaterialsHandler).Methods("GET")
+
+	router.HandleFunc("/locations", getLocationsHandler).Methods("GET")
+
+	fmt.Println("Server running...")
+	log.Fatal(http.ListenAndServe(":5000", handlers.CORS(origins, methods, headers)(router)))
+}
+
+// Controllers
+func createCustomerHandler(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
+	defer db.Close()
 	var customer CustomerJSON
 	json.NewDecoder(r.Body).Decode(&customer)
-	err := addCustomer(customer, db)
+	err := createCustomer(customer, db)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -23,20 +47,22 @@ func createCustomer(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(customer)
 }
 
-func getCustomers(w http.ResponseWriter, r *http.Request) {
+func getCustomersHandler(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
+	defer db.Close()
 	customers, _ := fetchCustomers(db)
 	json.NewEncoder(w).Encode(customers)
 }
 
-func getMaterialTypes(w http.ResponseWriter, r *http.Request) {
+func getMaterialTypesHandler(w http.ResponseWriter, r *http.Request) {
 	materialTypes := fetchMaterialTypes()
 	json.NewEncoder(w).Encode(materialTypes)
 }
 
-func sendMaterials(w http.ResponseWriter, r *http.Request) {
+func sendMaterialHandler(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
-	var material MaterialTemplate
+	defer db.Close()
+	var material IncomingMaterialJSON
 	json.NewDecoder(r.Body).Decode(&material)
 	err := sendMaterial(material, db)
 
@@ -47,19 +73,36 @@ func sendMaterials(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(material)
 }
 
-func main() {
-	router := mux.NewRouter()
-	origins := handlers.AllowedOrigins([]string{"*"})
-	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
-	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
+func getIncomingMaterialsHandler(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+	materials, err := getIncomingMaterials(db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(materials)
+}
 
-	router.HandleFunc("/customers", createCustomer).Methods("POST")
-	router.HandleFunc("/customers", getCustomers).Methods("GET")
+func createMaterialHandler(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+	var material MaterialJSON
+	json.NewDecoder(r.Body).Decode(&material)
+	err := createMaterial(material, db)
 
-	router.HandleFunc("/material_types", getMaterialTypes).Methods("GET")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(material)
+}
 
-	router.HandleFunc("/csr_materials", sendMaterials).Methods("POST")
-
-	fmt.Println("Server running...")
-	log.Fatal(http.ListenAndServe(":3000", handlers.CORS(origins, methods, headers)(router)))
+func getLocationsHandler(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+	query1 := r.URL.Query().Get("query1")
+	locations, _ := fetchLocations(db, LocationFilter{query1: query1})
+	json.NewEncoder(w).Encode(locations)
 }

@@ -10,13 +10,13 @@ type CustomerJSON struct {
 	Code string `json:"customerCode"`
 }
 
-type Customer struct {
+type CustomerDB struct {
 	ID   int    `field:"id"`
 	Name string `field:"name"`
 	Code string `field:"customer_code"`
 }
 
-func addCustomer(customer CustomerJSON, db *sql.DB) error {
+func createCustomer(customer CustomerJSON, db *sql.DB) error {
 	_, err := db.Exec("INSERT INTO customers (name, customer_code) VALUES ($1,$2)",
 		customer.Name, customer.Code)
 
@@ -26,7 +26,7 @@ func addCustomer(customer CustomerJSON, db *sql.DB) error {
 	return nil
 }
 
-func fetchCustomers(db *sql.DB) ([]Customer, error) {
+func fetchCustomers(db *sql.DB) ([]CustomerDB, error) {
 	rows, err := db.Query("SELECT * FROM customers;")
 	if err != nil {
 		log.Println("Error fetchCustomers1: ", err)
@@ -34,10 +34,10 @@ func fetchCustomers(db *sql.DB) ([]Customer, error) {
 	}
 	defer rows.Close()
 
-	var customers []Customer
+	var customers []CustomerDB
 
 	for rows.Next() {
-		var customer Customer
+		var customer CustomerDB
 		if err := rows.Scan(&customer.ID, &customer.Name, &customer.Code); err != nil {
 			log.Println("Error fetchCustomers2: ", err)
 			return customers, err
