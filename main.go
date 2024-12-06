@@ -36,6 +36,9 @@ func main() {
 	router.HandleFunc("/warehouses", createWarehouseHandler).Methods("POST")
 	router.HandleFunc("/locations", getLocationsHandler).Methods("GET")
 
+	router.HandleFunc("/reports/transactions", getTransactionsReport).Methods("GET")
+	router.HandleFunc("/reports/balance", getBalanceReport).Methods("GET")
+
 	fmt.Println("Server running...")
 	log.Fatal(http.ListenAndServe(":5000", handlers.CORS(origins, methods, headers)(router)))
 }
@@ -167,7 +170,41 @@ func createWarehouseHandler(w http.ResponseWriter, r *http.Request) {
 func getLocationsHandler(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
 	defer db.Close()
-	query1 := r.URL.Query().Get("query1")
-	locations, _ := fetchLocations(db, LocationFilter{query1: query1})
+	locations, _ := fetchLocations(db)
 	json.NewEncoder(w).Encode(locations)
+}
+
+/*
+report := Report{app: myApp, db: db, window: myWindow}
+		inv := InventoryReport{Report: report}
+		trx := TransactionReport{Report: report}
+		blc := BalanceReport{Report: report}
+*/
+
+func getTransactionsReport(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+
+	trxRep := TransactionReport{Report: Report{db: db}, trxFilter: SearchQuery{}}
+	trxReport, err := trxRep.getReportList()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(trxReport)
+}
+
+func getBalanceReport(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+
+	balanceRep := BalanceReport{Report: Report{db: db}, blcFilter: SearchQuery{}}
+	balanceReport, err := balanceRep.getReportList()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(balanceReport)
 }

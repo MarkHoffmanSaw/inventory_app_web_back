@@ -623,20 +623,14 @@ func removeMaterial(material MaterialToRemoveJSON, db *sql.DB) error {
 		return errors.New(`The removing quantity (` + strconv.Itoa(quantity) + `) is more than the actual one (` + strconv.Itoa(actualQuantity) + `)`)
 	}
 
-	if actualQuantity == quantity {
-		_, err = db.Exec(`
-				DELETE FROM materials
-				WHERE material_id = $1;
-		`, materialId)
-	} else {
-		// Update the material quantity
-		_, err = db.Exec(`
+	// Update the material quantity
+	_, err = db.Exec(`
 				UPDATE materials
 				SET quantity = (quantity - $1)
 				WHERE material_id = $2;
 		`, quantity, materialId,
-		)
-	}
+	)
+
 	if err != nil {
 		return err
 	}

@@ -5,17 +5,13 @@ import (
 	"log"
 )
 
-type LocationFilter struct {
-	query1 string
-}
-
 type LocationDB struct {
 	ID          int    `field:"location_id"`
 	Name        string `field:"name"`
 	WarehouseID int    `field:"warehouse_id"`
 }
 
-func fetchLocations(db *sql.DB, options LocationFilter) ([]LocationDB, error) {
+func fetchLocations(db *sql.DB) ([]LocationDB, error) {
 	rows, err := db.Query("SELECT * FROM locations;")
 	if err != nil {
 		log.Println("Error fetchLocations1: ", err)
