@@ -39,28 +39,40 @@ type IncomingMaterialDB struct {
 	Owner        string  `field:"owner"`
 }
 
+// Create Material
+// Move Material
 type MaterialJSON struct {
-	IncomingMaterialID string `json:"incomingMaterialId"`
-	LocationID         string `json:"locationId"`
-	Notes              string `json:"notes"`
-	Qty                string `json:"quantity"`
+	MaterialID string `json:"materialId"`
+	LocationID string `json:"locationId"`
+	Qty        string `json:"quantity"`
+	Notes      string `json:"notes"`
+}
+
+// Remove Material
+type MaterialToRemoveJSON struct {
+	MaterialID string `json:"materialId"`
+	Qty        string `json:"quantity"`
+	JobTicket  string `json:"jobTicket"`
 }
 
 type MaterialDB struct {
-	MaterialId   int       `field:"material_id"`
-	StockId      string    `field:"stock_id"`
-	LocationId   int       `field:"location_id"`
-	CustomerId   int       `field:"customer_id"`
-	MaterialType string    `field:"material_type"`
-	Description  string    `field:"description"`
-	Notes        string    `field:"notes"`
-	Quantity     int       `field:"quantity"`
-	UpdatedAt    time.Time `field:"updated_at"`
-	IsActive     bool      `field:"is_active"`
-	Cost         float64   `field:"cost"`
-	MinQty       int       `field:"min_required_quantity"`
-	MaxQty       int       `field:"max_required_quantity"`
-	Owner        string    `field:"onwer"`
+	MaterialID    int       `field:"material_id"`
+	WarehouseName string    `field:"warehouse_name"`
+	StockID       string    `field:"stock_id"`
+	CustomerID    int       `field:"customer_id"`
+	CustomerName  string    `field:"customer_name"`
+	LocationID    int       `field:"location_id"`
+	LocationName  string    `field:"location_name"`
+	MaterialType  string    `field:"material_type"`
+	Description   string    `field:"description"`
+	Notes         string    `field:"notes"`
+	Quantity      int       `field:"quantity"`
+	UpdatedAt     time.Time `field:"updated_at"`
+	IsActive      bool      `field:"is_active"`
+	Cost          float64   `field:"cost"`
+	MinQty        int       `field:"min_required_quantity"`
+	MaxQty        int       `field:"max_required_quantity"`
+	Owner         string    `field:"onwer"`
 }
 
 type TransactionInfo struct {
@@ -140,6 +152,51 @@ func getIncomingMaterials(db *sql.DB) ([]IncomingMaterialDB, error) {
 	return materials, nil
 }
 
+func getMaterials(db *sql.DB) ([]MaterialDB, error) {
+	rows, err := db.Query(`
+		SELECT material_id, w.name as "warehouse_name",
+		c.name as "customer_name", c.customer_id,
+		l.location_id, l.name as "location_name",
+		stock_id, cost, quantity, min_required_quantity, max_required_quantity,
+		m.description, notes, is_active, material_type, owner
+		FROM materials m
+		LEFT JOIN customers c ON c.customer_id = m.customer_id
+		LEFT JOIN locations l ON l.location_id = m.location_id
+		LEFT JOIN warehouses w ON w.warehouse_id = l.warehouse_id
+		`)
+	if err != nil {
+		return nil, fmt.Errorf("Error querying incoming materials: %w", err)
+	}
+	defer rows.Close()
+
+	var materials []MaterialDB
+	for rows.Next() {
+		var material MaterialDB
+		if err := rows.Scan(
+			&material.MaterialID,
+			&material.WarehouseName,
+			&material.CustomerName,
+			&material.CustomerID,
+			&material.LocationID,
+			&material.LocationName,
+			&material.StockID,
+			&material.Cost,
+			&material.Quantity,
+			&material.MinQty,
+			&material.MaxQty,
+			&material.Description,
+			&material.Notes,
+			&material.IsActive,
+			&material.MaterialType,
+			&material.Owner,
+		); err != nil {
+			return nil, fmt.Errorf("Error scanning row: %w", err)
+		}
+		materials = append(materials, material)
+	}
+	return materials, nil
+}
+
 func createMaterial(material MaterialJSON, db *sql.DB) error {
 	var incomingMaterial IncomingMaterialDB
 
@@ -147,7 +204,7 @@ func createMaterial(material MaterialJSON, db *sql.DB) error {
 		SELECT customer_id, stock_id, cost, min_required_quantity,
 		max_required_quantity, notes, is_active, type, owner
 		FROM incoming_materials
-		WHERE shipping_id = $1`, material.IncomingMaterialID).
+		WHERE shipping_id = $1`, material.MaterialID).
 		Scan(
 			&incomingMaterial.CustomerID,
 			&incomingMaterial.StockID,
@@ -159,7 +216,6 @@ func createMaterial(material MaterialJSON, db *sql.DB) error {
 			&incomingMaterial.MaterialType,
 			&incomingMaterial.Owner,
 		)
-
 	if err != nil {
 		return err
 	}
@@ -175,7 +231,6 @@ func createMaterial(material MaterialJSON, db *sql.DB) error {
 					RETURNING material_id;
 					`, material.Qty, material.Notes, incomingMaterial.StockID, material.LocationID, incomingMaterial.Owner,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -224,16 +279,14 @@ func createMaterial(material MaterialJSON, db *sql.DB) error {
 			incomingMaterial.Cost,
 			incomingMaterial.Owner,
 		).Scan(&materialId)
-
 		if err != nil {
 			return err
 		}
 	}
 
 	// Remove the material from incoming
-	shippingId, _ := strconv.Atoi(material.IncomingMaterialID)
+	shippingId, _ := strconv.Atoi(material.MaterialID)
 	err = deleteIncomingMaterial(db, shippingId)
-
 	if err != nil {
 		return err
 	}
@@ -247,10 +300,10 @@ func createMaterial(material MaterialJSON, db *sql.DB) error {
 		updatedAt:  time.Now(),
 		cost:       incomingMaterial.Cost,
 	}, db)
-
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -412,5 +465,193 @@ func addTranscation(trx *TransactionInfo, db *sql.DB) error {
 			}
 		}
 	}
+	return nil
+}
+
+func getMaterialById(materialId int, db *sql.DB) (MaterialDB, error) {
+	var currMaterial MaterialDB
+	err := db.QueryRow(`SELECT * FROM materials WHERE material_id = $1`, materialId).
+		Scan(
+			&currMaterial.MaterialID,
+			&currMaterial.StockID,
+			&currMaterial.LocationID,
+			&currMaterial.CustomerID,
+			&currMaterial.MaterialType,
+			&currMaterial.Description,
+			&currMaterial.Notes,
+			&currMaterial.Quantity,
+			&currMaterial.Cost,
+			&currMaterial.MinQty,
+			&currMaterial.MaxQty,
+			&currMaterial.UpdatedAt,
+			&currMaterial.IsActive,
+			&currMaterial.Owner,
+		)
+	if err != nil {
+		return MaterialDB{}, err
+	}
+
+	return currMaterial, nil
+}
+
+func moveMaterial(material MaterialJSON, db *sql.DB) error {
+	materialId, _ := strconv.Atoi(material.MaterialID)
+	currMaterial, err := getMaterialById(materialId, db)
+	if err != nil {
+		return err
+	}
+
+	newLocationId := material.LocationID
+	quantity, _ := strconv.Atoi(material.Qty)
+	notes := material.Notes
+	actualQuantity := currMaterial.Quantity
+	currMaterialId := currMaterial.MaterialID
+	currentLocationId := currMaterial.LocationID
+	stockId := currMaterial.StockID
+	owner := currMaterial.Owner
+
+	// Check whether remaining quantity exists
+	if actualQuantity < quantity {
+		return errors.New(
+			`The moving quantity (` + strconv.Itoa(quantity) + `) is more than the actual one (` + strconv.Itoa(actualQuantity) + `)`)
+	}
+
+	// Update material in the current location
+	err = db.QueryRow(`
+			UPDATE materials
+			SET quantity = (quantity - $1),
+				notes = $2
+			WHERE material_id = $3 AND location_id = $4
+			RETURNING material_id, stock_id, location_id, customer_id, material_type,
+					description, notes, quantity, updated_at, is_active, cost,
+					min_required_quantity, max_required_quantity, owner;
+			`, quantity, notes, currMaterialId, currentLocationId,
+	).Scan(
+		&currMaterial.MaterialID,
+		&currMaterial.StockID,
+		&currMaterial.LocationID,
+		&currMaterial.CustomerID,
+		&currMaterial.MaterialType,
+		&currMaterial.Description,
+		&currMaterial.Notes,
+		&currMaterial.Quantity,
+		&currMaterial.UpdatedAt,
+		&currMaterial.IsActive,
+		&currMaterial.Cost,
+		&currMaterial.MinQty,
+		&currMaterial.MaxQty,
+		&currMaterial.Owner,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Update material in the new location
+	rows, err := db.Query(`
+		UPDATE materials
+		SET quantity = (quantity + $1)
+		WHERE
+			stock_id = $2 AND
+			location_id = $3 AND
+			owner = $4
+		RETURNING material_id;
+			`, quantity, stockId, newLocationId, owner,
+	)
+	if err != nil {
+		return err
+	}
+
+	var newMaterialId int
+	for rows.Next() {
+		err := rows.Scan(&newMaterialId)
+		if err != nil {
+			return err
+		}
+	}
+
+	// If there is no the material in the destination location
+	// Then add the material in there
+	if newMaterialId == 0 {
+		err := db.QueryRow(`
+			INSERT INTO materials
+				(stock_id, location_id,
+				customer_id, material_type, description, notes, quantity, updated_at,
+				cost, is_active, min_required_quantity, max_required_quantity, owner)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+				RETURNING material_id;`,
+			stockId, newLocationId,
+			currMaterial.CustomerID, currMaterial.MaterialType, currMaterial.Description,
+			currMaterial.Notes, quantity, time.Now(), currMaterial.Cost, currMaterial.IsActive,
+			currMaterial.MinQty, currMaterial.MaxQty, currMaterial.Owner).
+			Scan(&newMaterialId)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = addTranscation(&TransactionInfo{
+		materialId:    currMaterial.MaterialID,
+		stockId:       stockId,
+		quantity:      -quantity,
+		notes:         notes,
+		cost:          currMaterial.Cost,
+		updatedAt:     time.Now(),
+		isMove:        true,
+		newMaterialId: newMaterialId,
+	}, db)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeMaterial(material MaterialToRemoveJSON, db *sql.DB) error {
+	materialId, _ := strconv.Atoi(material.MaterialID)
+	currMaterial, err := getMaterialById(materialId, db)
+	if err != nil {
+		return err
+	}
+
+	quantity, _ := strconv.Atoi(material.Qty)
+	actualQuantity := currMaterial.Quantity
+	stockId := currMaterial.StockID
+	notes := currMaterial.Notes
+	jobTicket := material.JobTicket
+
+	if actualQuantity < quantity {
+		return errors.New(`The removing quantity (` + strconv.Itoa(quantity) + `) is more than the actual one (` + strconv.Itoa(actualQuantity) + `)`)
+	}
+
+	if actualQuantity == quantity {
+		_, err = db.Exec(`
+				DELETE FROM materials
+				WHERE material_id = $1;
+		`, materialId)
+	} else {
+		// Update the material quantity
+		_, err = db.Exec(`
+				UPDATE materials
+				SET quantity = (quantity - $1)
+				WHERE material_id = $2;
+		`, quantity, materialId,
+		)
+	}
+	if err != nil {
+		return err
+	}
+
+	err = addTranscation(&TransactionInfo{
+		materialId: materialId,
+		stockId:    stockId,
+		quantity:   -quantity,
+		notes:      notes,
+		jobTicket:  jobTicket,
+		updatedAt:  time.Now(),
+	}, db)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

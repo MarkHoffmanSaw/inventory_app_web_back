@@ -10,6 +10,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type ResponseJSON struct {
+	Message string `json:"message"`
+}
+
 func main() {
 	router := mux.NewRouter()
 	origins := handlers.AllowedOrigins([]string{"*"})
@@ -21,11 +25,15 @@ func main() {
 	router.HandleFunc("/customers", getCustomersHandler).Methods("GET")
 
 	router.HandleFunc("/materials", createMaterialHandler).Methods("POST")
+	router.HandleFunc("/materials", getMaterialsHandler).Methods("GET")
 	router.HandleFunc("/material_types", getMaterialTypesHandler).Methods("GET")
+	router.HandleFunc("/materials/move-to-location", moveMaterialHandler).Methods("PATCH")
+	router.HandleFunc("/materials/remove-from-location", removeMaterialHandler).Methods("PATCH")
 
 	router.HandleFunc("/incoming_materials", sendMaterialHandler).Methods("POST")
 	router.HandleFunc("/incoming_materials", getIncomingMaterialsHandler).Methods("GET")
 
+	router.HandleFunc("/warehouses", createWarehouseHandler).Methods("POST")
 	router.HandleFunc("/locations", getLocationsHandler).Methods("GET")
 
 	fmt.Println("Server running...")
@@ -77,6 +85,7 @@ func getIncomingMaterialsHandler(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
 	defer db.Close()
 	materials, err := getIncomingMaterials(db)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -97,6 +106,62 @@ func createMaterialHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(material)
+}
+
+func getMaterialsHandler(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+	materials, err := getMaterials(db)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(materials)
+}
+
+func moveMaterialHandler(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+	var material MaterialJSON
+	json.NewDecoder(r.Body).Decode(&material)
+	err := moveMaterial(material, db)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(material)
+}
+
+func removeMaterialHandler(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+	var material MaterialToRemoveJSON
+	json.NewDecoder(r.Body).Decode(&material)
+	err := removeMaterial(material, db)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(material)
+}
+
+func createWarehouseHandler(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+
+	var warehouse WarehouseJSON
+	json.NewDecoder(r.Body).Decode(&warehouse)
+	err := createWarehouse(warehouse, db)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(warehouse)
 }
 
 func getLocationsHandler(w http.ResponseWriter, r *http.Request) {
