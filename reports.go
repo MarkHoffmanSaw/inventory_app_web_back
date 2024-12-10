@@ -19,9 +19,7 @@ type Transaction struct {
 }
 
 type SearchQuery struct {
-	stockID      string
-	customerID   int
-	locationID   int
+	customerId   int
 	materialType string
 	dateFrom     string
 	dateTo       string
@@ -61,7 +59,8 @@ type BalanceRep struct {
 var accLib accounting.Accounting = accounting.Accounting{Symbol: "$", Precision: 2}
 
 func (t TransactionReport) getReportList() ([]TransactionRep, error) {
-	rows, err := t.db.Query(`SELECT tl.stock_id, m.material_type, tl.quantity_change as "quantity",
+	rows, err := t.db.Query(`SELECT tl.stock_id, m.material_type,
+								tl.quantity_change as "quantity",
 								tl.cost as "unit_cost",
 								(tl.quantity_change * tl.cost) as "cost",
 								tl.updated_at
@@ -72,9 +71,9 @@ func (t TransactionReport) getReportList() ([]TransactionRep, error) {
 								($1 = 0 OR m.customer_id = $1) AND
 								($2 = '' OR m.material_type::TEXT = $2) AND
 								($3 = '' OR tl.updated_at::TEXT >= $3) AND
-								($3 = '' OR tl.updated_at::TEXT <= $4)
+								($4 = '' OR tl.updated_at::TEXT <= $4)
 							 ORDER BY transaction_id;`,
-		t.trxFilter.customerID, t.trxFilter.materialType, t.trxFilter.dateFrom, t.trxFilter.dateTo)
+		t.trxFilter.customerId, t.trxFilter.materialType, t.trxFilter.dateFrom, t.trxFilter.dateTo)
 	if err != nil {
 		return []TransactionRep{}, err
 	}
@@ -130,7 +129,7 @@ func (b BalanceReport) getReportList() ([]BalanceRep, error) {
 		($3 = '' OR tl.updated_at::TEXT <= $3)
 	GROUP BY m.stock_id, m.material_type
 `,
-		b.blcFilter.customerID, b.blcFilter.materialType, b.blcFilter.dateAsOf,
+		b.blcFilter.customerId, b.blcFilter.materialType, b.blcFilter.dateAsOf,
 	)
 	if err != nil {
 		return []BalanceRep{}, err

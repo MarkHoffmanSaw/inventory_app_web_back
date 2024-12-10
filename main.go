@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -174,18 +175,22 @@ func getLocationsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(locations)
 }
 
-/*
-report := Report{app: myApp, db: db, window: myWindow}
-		inv := InventoryReport{Report: report}
-		trx := TransactionReport{Report: report}
-		blc := BalanceReport{Report: report}
-*/
-
 func getTransactionsReport(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
 	defer db.Close()
 
-	trxRep := TransactionReport{Report: Report{db: db}, trxFilter: SearchQuery{}}
+	customerIdStr := r.URL.Query().Get("customerId")
+	customerId, _ := strconv.Atoi(customerIdStr)
+	materialType := r.URL.Query().Get("materialType")
+	dateFrom := r.URL.Query().Get("dateFrom")
+	dateTo := r.URL.Query().Get("dateTo")
+
+	trxRep := TransactionReport{Report: Report{db: db}, trxFilter: SearchQuery{
+		customerId:   customerId,
+		materialType: materialType,
+		dateFrom:     dateFrom,
+		dateTo:       dateTo,
+	}}
 	trxReport, err := trxRep.getReportList()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -199,7 +204,16 @@ func getBalanceReport(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
 	defer db.Close()
 
-	balanceRep := BalanceReport{Report: Report{db: db}, blcFilter: SearchQuery{}}
+	customerIdStr := r.URL.Query().Get("customerId")
+	customerId, _ := strconv.Atoi(customerIdStr)
+	materialType := r.URL.Query().Get("materialType")
+	dateAsOf := r.URL.Query().Get("dateAsOf")
+
+	balanceRep := BalanceReport{Report: Report{db: db}, blcFilter: SearchQuery{
+		customerId:   customerId,
+		materialType: materialType,
+		dateAsOf:     dateAsOf,
+	}}
 	balanceReport, err := balanceRep.getReportList()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
