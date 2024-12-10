@@ -40,6 +40,8 @@ func main() {
 	router.HandleFunc("/reports/transactions", getTransactionsReport).Methods("GET")
 	router.HandleFunc("/reports/balance", getBalanceReport).Methods("GET")
 
+	router.HandleFunc("/import_data", importData).Methods("POST")
+
 	fmt.Println("Server running...")
 	log.Fatal(http.ListenAndServe(":5000", handlers.CORS(origins, methods, headers)(router)))
 }
@@ -221,4 +223,19 @@ func getBalanceReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(balanceReport)
+}
+
+func importData(w http.ResponseWriter, r *http.Request) {
+	db, _ := connectToDB()
+	defer db.Close()
+
+	err := importDataToDB(db)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	response := ResponseJSON{Message: "success"}
+	json.NewEncoder(w).Encode(response)
 }
