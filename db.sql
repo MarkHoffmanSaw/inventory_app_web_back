@@ -53,7 +53,7 @@ CREATE TABLE transactions_log (
 
 CREATE TABLE incoming_materials (
 	shipping_id SERIAL PRIMARY KEY,
-	customer_name VARCHAR(100) NOT NULL,
+	customer_id INT REFERENCES customers(customer_id),
 	stock_id VARCHAR(100) NOT NULL,
 	cost DECIMAL NOT NULL,
 	quantity INT NOT NULL,
