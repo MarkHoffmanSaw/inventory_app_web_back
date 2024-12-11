@@ -42,8 +42,8 @@ func main() {
 
 	router.HandleFunc("/import_data", importData).Methods("POST")
 
-	fmt.Println("Server running...")
-	log.Fatal(http.ListenAndServe(":5000", handlers.CORS(origins, methods, headers)(router)))
+	fmt.Println("Server running on port 8080...")
+	log.Fatal(http.ListenAndServe(":8080", handlers.CORS(origins, methods, headers)(router)))
 }
 
 // Controllers
