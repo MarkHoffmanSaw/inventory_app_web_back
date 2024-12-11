@@ -108,8 +108,6 @@ func sendMaterial(material IncomingMaterialJSON, db *sql.DB) error {
 		material.Owner,
 	)
 
-	log.Println(err)
-
 	if err != nil {
 		return err
 	}
