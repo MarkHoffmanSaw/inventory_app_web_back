@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 type ResponseJSON struct {
@@ -42,8 +44,15 @@ func main() {
 
 	router.HandleFunc("/import_data", importData).Methods("POST")
 
-	fmt.Println("Server running on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", handlers.CORS(origins, methods, headers)(router)))
+	// Env loading
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+	port := os.Getenv("PORT")
+
+	fmt.Println("Server running on port: " + port)
+	log.Fatal(http.ListenAndServe(":"+port, handlers.CORS(origins, methods, headers)(router)))
 }
 
 // Controllers
