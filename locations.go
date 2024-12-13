@@ -17,7 +17,6 @@ type LocationDB struct {
 }
 
 func fetchAvailableLocations(db *sql.DB, opts LocationFilter) ([]LocationDB, error) {
-	log.Println(opts)
 	rows, err := db.Query(`
 		SELECT l.location_id, l.name, l.warehouse_id FROM locations l
 		LEFT JOIN materials m
