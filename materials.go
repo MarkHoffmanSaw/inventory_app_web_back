@@ -87,8 +87,26 @@ type TransactionInfo struct {
 	newMaterialId int       // opts
 }
 
-func fetchMaterialTypes() []string {
-	return []string{"Card", "Envelope"}
+func fetchMaterialTypes(db *sql.DB) ([]string, error) {
+	rows, err := db.Query(`
+		SELECT enumlabel FROM pg_enum pe
+		LEFT JOIN pg_type pt ON pt.oid = pe.enumtypid
+		WHERE pt.typname = 'material_type';
+	`)
+	if err != nil {
+		return []string{}, err
+	}
+
+	var materialTypes []string
+	for rows.Next() {
+		var materialType string
+		if err := rows.Scan(&materialType); err != nil {
+			return nil, fmt.Errorf("Error scanning row: %w", err)
+		}
+		materialTypes = append(materialTypes, materialType)
+	}
+
+	return materialTypes, nil
 }
 
 func sendMaterial(material IncomingMaterialJSON, db *sql.DB) error {

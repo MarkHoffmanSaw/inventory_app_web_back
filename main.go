@@ -74,12 +74,24 @@ func createCustomerHandler(w http.ResponseWriter, r *http.Request) {
 func getCustomersHandler(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
 	defer db.Close()
-	customers, _ := fetchCustomers(db)
+	customers, err := fetchCustomers(db)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	json.NewEncoder(w).Encode(customers)
 }
 
 func getMaterialTypesHandler(w http.ResponseWriter, r *http.Request) {
-	materialTypes := fetchMaterialTypes()
+	db, _ := connectToDB()
+	defer db.Close()
+	materialTypes, err := fetchMaterialTypes(db)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	json.NewEncoder(w).Encode(materialTypes)
 }
 
