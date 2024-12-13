@@ -5,14 +5,25 @@ import (
 	"log"
 )
 
+type LocationFilter struct {
+	stockId string
+	owner   string
+}
+
 type LocationDB struct {
 	ID          int    `field:"location_id"`
 	Name        string `field:"name"`
 	WarehouseID int    `field:"warehouse_id"`
 }
 
-func fetchLocations(db *sql.DB) ([]LocationDB, error) {
-	rows, err := db.Query("SELECT * FROM locations;")
+func fetchAvailableLocations(db *sql.DB, opts LocationFilter) ([]LocationDB, error) {
+	log.Println(opts)
+	rows, err := db.Query(`
+		SELECT l.location_id, l.name, l.warehouse_id FROM locations l
+		LEFT JOIN materials m
+		ON l.location_id = m.location_id
+		WHERE m.stock_id = $1 AND m.owner = $2 OR m.material_id IS NULL;
+	`, opts.stockId, opts.owner)
 	if err != nil {
 		log.Println("Error fetchLocations1: ", err)
 		return nil, err

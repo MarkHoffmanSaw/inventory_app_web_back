@@ -1,64 +1,86 @@
 CREATE DATABASE tag_db;
 
-CREATE TABLE customers (
-	customer_id serial PRIMARY KEY,
+DROP TABLE IF EXISTS transactions_log;
+
+DROP TABLE IF EXISTS materials;
+
+DROP TABLE IF EXISTS incoming_materials;
+
+DROP TABLE IF EXISTS customers;
+
+DROP TABLE IF EXISTS locations;
+
+DROP TABLE IF EXISTS warehouses;
+
+DROP TYPE IF EXISTS material_type;
+
+DROP TYPE IF EXISTS owner;
+
+CREATE TABLE IF NOT EXISTS customers (
+	customer_id SERIAL PRIMARY KEY,
 	name VARCHAR(100) NOT NULL UNIQUE,
 	customer_code VARCHAR(100)
 );
 
-CREATE TABLE warehouses (
-	warehouse_id serial PRIMARY KEY,
-	name VARCHAR(100) UNIQUE  NOT NULL
+CREATE TABLE IF NOT EXISTS warehouses (
+	warehouse_id SERIAL PRIMARY KEY,
+	name VARCHAR(100) UNIQUE NOT NULL
 );
 
-CREATE TABLE locations (
-	location_id serial PRIMARY KEY,
-	name VARCHAR(100)  NOT NULL,
-	warehouse_id int REFERENCES warehouses(warehouse_id),
-	CONSTRAINT locations_name_warehouse_id UNIQUE(name, warehouse_id)
+CREATE TABLE IF NOT EXISTS locations (
+	location_id SERIAL PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	warehouse_id INT REFERENCES warehouses (warehouse_id),
+	CONSTRAINT unique_location_name_warehouse_id UNIQUE (name, warehouse_id)
 );
 
-CREATE TYPE material_type AS ENUM ('Carrier','Card','Envelope','Insert', 'Consumables');
-CREATE TYPE owner AS ENUM('Tag', 'Customer');
+CREATE TYPE material_type AS ENUM (
+	'Carrier',
+	'Card',
+	'Envelope',
+	'Insert',
+	'Consumables'
+);
 
-CREATE TABLE materials (
-	material_id serial,
-	stock_id VARCHAR(100)  NOT NULL,
-	location_id int REFERENCES locations(location_id),
-	customer_id int REFERENCES customers(customer_id),
-	material_type MATERIAL_TYPE  NOT NULL,
+CREATE TYPE owner AS ENUM ('Tag', 'Customer');
+
+CREATE TABLE IF NOT EXISTS materials (
+	material_id SERIAL PRIMARY KEY,
+	stock_id VARCHAR(100) NOT NULL,
+	location_id INT REFERENCES locations (location_id) UNIQUE,
+	customer_id INT REFERENCES customers (customer_id),
+	material_type MATERIAL_TYPE NOT NULL,
 	description TEXT,
 	notes TEXT,
-	quantity int  NOT NULL,
+	quantity INT NOT NULL,
 	cost DECIMAL NOT NULL,
-	min_required_quantity int,
-	max_required_quantity int,
+	min_required_quantity INT,
+	max_required_quantity INT,
 	updated_at TIMESTAMP,
 	is_active BOOLEAN NOT NULL,
-	owner OWNER NOT NULL,
-	CONSTRAINT pk_location_stock_owner PRIMARY KEY (stock_id, location_id, owner)
+	owner OWNER NOT NULL
 );
 
-CREATE TABLE transactions_log (
-	transaction_id serial PRIMARY KEY,
-	material_id int NOT NULL,
+CREATE TABLE IF NOT EXISTS transactions_log (
+	transaction_id SERIAL PRIMARY KEY,
+	material_id INT REFERENCES materials (material_id),
 	stock_id VARCHAR(100) NOT NULL,
-	quantity_change int NOT NULL,
-	notes text,
+	quantity_change INT NOT NULL,
+	notes TEXT,
 	cost DECIMAL,
 	job_ticket VARCHAR(100),
-	updated_at timestamp,
-	remaining_quantity int
+	updated_at TIMESTAMP,
+	remaining_quantity INT
 );
 
-CREATE TABLE incoming_materials (
+CREATE TABLE IF NOT EXISTS incoming_materials (
 	shipping_id SERIAL PRIMARY KEY,
-	customer_id INT REFERENCES customers(customer_id),
+	customer_id INT REFERENCES customers (customer_id),
 	stock_id VARCHAR(100) NOT NULL,
 	cost DECIMAL NOT NULL,
 	quantity INT NOT NULL,
-	min_required_quantity int,
-	max_required_quantity int,
+	min_required_quantity INT,
+	max_required_quantity INT,
 	notes VARCHAR(100),
 	is_active BOOLEAN NOT NULL,
 	type VARCHAR(100) NOT NULL,

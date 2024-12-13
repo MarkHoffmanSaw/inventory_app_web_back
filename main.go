@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -37,7 +38,7 @@ func main() {
 	router.HandleFunc("/incoming_materials", getIncomingMaterialsHandler).Methods("GET")
 
 	router.HandleFunc("/warehouses", createWarehouseHandler).Methods("POST")
-	router.HandleFunc("/locations", getLocationsHandler).Methods("GET")
+	router.HandleFunc("/available_locations", getAvailableLocationsHandler).Methods("GET")
 
 	router.HandleFunc("/reports/transactions", getTransactionsReport).Methods("GET")
 	router.HandleFunc("/reports/balance", getBalanceReport).Methods("GET")
@@ -117,7 +118,8 @@ func createMaterialHandler(w http.ResponseWriter, r *http.Request) {
 	err := createMaterial(material, db)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, `{"message":"`+strings.Replace(err.Error(), `"`, "", -1)+
+			`"}`, http.StatusConflict)
 		return
 	}
 	json.NewEncoder(w).Encode(material)
@@ -179,10 +181,13 @@ func createWarehouseHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(warehouse)
 }
 
-func getLocationsHandler(w http.ResponseWriter, r *http.Request) {
+func getAvailableLocationsHandler(w http.ResponseWriter, r *http.Request) {
 	db, _ := connectToDB()
 	defer db.Close()
-	locations, _ := fetchLocations(db)
+	stockId := r.URL.Query().Get("stockId")
+	owner := r.URL.Query().Get("owner")
+
+	locations, _ := fetchAvailableLocations(db, LocationFilter{stockId: stockId, owner: owner})
 	json.NewEncoder(w).Encode(locations)
 }
 
