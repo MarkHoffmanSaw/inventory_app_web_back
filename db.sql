@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS incoming_materials (
 	quantity INT NOT NULL,
 	min_required_quantity INT,
 	max_required_quantity INT,
-	notes VARCHAR(100),
+	description TEXT,
 	is_active BOOLEAN NOT NULL,
 	type VARCHAR(100) NOT NULL,
 	owner OWNER NOT NULL

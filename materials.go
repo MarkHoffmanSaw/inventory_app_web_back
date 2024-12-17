@@ -33,7 +33,7 @@ type IncomingMaterialDB struct {
 	Quantity     int     `field:"quantity"`
 	MinQty       int     `field:"min_required_quantity"`
 	MaxQty       int     `field:"max_required_quantity"`
-	Notes        string  `field:"notes"`
+	Description  string  `field:"description"`
 	IsActive     bool    `field:"is_active"`
 	MaterialType string  `field:"material_type"`
 	Owner        string  `field:"owner"`
@@ -118,7 +118,7 @@ func sendMaterial(material IncomingMaterialJSON, db *sql.DB) error {
 				INSERT INTO incoming_materials
 					(customer_id, stock_id, cost, quantity,
 					max_required_quantity, min_required_quantity,
-					notes, is_active, type, owner)
+					description, is_active, type, owner)
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
 		material.CustomerID, material.StockID, material.Cost,
 		qty, maxQty, minQty,
@@ -135,7 +135,7 @@ func sendMaterial(material IncomingMaterialJSON, db *sql.DB) error {
 func getIncomingMaterials(db *sql.DB) ([]IncomingMaterialDB, error) {
 	rows, err := db.Query(`
 		SELECT shipping_id, c.name, c.customer_id, stock_id, cost, quantity,
-		min_required_quantity, max_required_quantity, notes, is_active, type, owner
+		min_required_quantity, max_required_quantity, description, is_active, type, owner
 		FROM incoming_materials im
 		LEFT JOIN customers c ON c.customer_id = im.customer_id
 		`)
@@ -156,7 +156,7 @@ func getIncomingMaterials(db *sql.DB) ([]IncomingMaterialDB, error) {
 			&material.Quantity,
 			&material.MinQty,
 			&material.MaxQty,
-			&material.Notes,
+			&material.Description,
 			&material.IsActive,
 			&material.MaterialType,
 			&material.Owner,
@@ -218,7 +218,7 @@ func createMaterial(material MaterialJSON, db *sql.DB) error {
 
 	err := db.QueryRow(`
 		SELECT customer_id, stock_id, cost, min_required_quantity,
-		max_required_quantity, notes, is_active, type, owner
+		max_required_quantity, description, is_active, type, owner
 		FROM incoming_materials
 		WHERE shipping_id = $1`, material.MaterialID).
 		Scan(
@@ -227,7 +227,7 @@ func createMaterial(material MaterialJSON, db *sql.DB) error {
 			&incomingMaterial.Cost,
 			&incomingMaterial.MinQty,
 			&incomingMaterial.MaxQty,
-			&incomingMaterial.Notes,
+			&incomingMaterial.Description,
 			&incomingMaterial.IsActive,
 			&incomingMaterial.MaterialType,
 			&incomingMaterial.Owner,
@@ -285,7 +285,7 @@ func createMaterial(material MaterialJSON, db *sql.DB) error {
 			material.LocationID,
 			incomingMaterial.CustomerID,
 			incomingMaterial.MaterialType,
-			incomingMaterial.Notes,
+			incomingMaterial.Description,
 			material.Notes,
 			material.Qty,
 			time.Now(),
