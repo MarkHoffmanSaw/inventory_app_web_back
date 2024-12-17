@@ -35,11 +35,21 @@ CREATE TABLE IF NOT EXISTS locations (
 );
 
 CREATE TYPE material_type AS ENUM (
-	'Carrier',
-	'Card',
-	'Envelope',
-	'Insert',
-	'Consumables'
+	'ACT LABEL',
+	'BUBBLE',
+	'BURGO',
+	'CARRIER',
+	'ENVELOPE',
+	'FREE SHIPPING',
+	'INSERT',
+	'KEYCHAIN',
+	'LABELS',
+	'PAPER',
+	'PRINT',
+	'RIBBON',
+	'SHIPPING',
+	'STICKER',
+	'WEARABLE'
 );
 
 CREATE TYPE owner AS ENUM ('Tag', 'Customer');
@@ -56,7 +66,7 @@ CREATE TABLE IF NOT EXISTS materials (
 	cost DECIMAL NOT NULL,
 	min_required_quantity INT,
 	max_required_quantity INT,
-	updated_at TIMESTAMP,
+	updated_at DATE,
 	is_active BOOLEAN NOT NULL,
 	owner OWNER NOT NULL
 );
@@ -69,7 +79,7 @@ CREATE TABLE IF NOT EXISTS transactions_log (
 	notes TEXT,
 	cost DECIMAL,
 	job_ticket VARCHAR(100),
-	updated_at TIMESTAMP,
+	updated_at DATE,
 	remaining_quantity INT
 );
 

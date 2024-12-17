@@ -10,6 +10,7 @@ import (
 
 type Transaction struct {
 	StockID      string    `field:"stock_id"`
+	LocationName string    `field:"location_name"`
 	MaterialType string    `field:"material_type"`
 	Qty          int       `field:"quantity"`
 	UnitCost     float64   `field:"unit_cost"`
@@ -51,6 +52,7 @@ type TransactionRep struct {
 
 type BalanceRep struct {
 	StockID      string
+	LocationName string
 	MaterialType string
 	Qty          string
 	TotalValue   string
@@ -118,16 +120,18 @@ func (t TransactionReport) getReportList() ([]TransactionRep, error) {
 func (b BalanceReport) getReportList() ([]BalanceRep, error) {
 	rows, err := b.db.Query(`
 	SELECT m.stock_id,
+		   l.name as "location_name",
 		   m.material_type,
 		   SUM(tl.quantity_change) AS "quantity",
 		   SUM(tl.quantity_change * tl.cost) AS "total_value"
 	FROM transactions_log tl
 	LEFT JOIN materials m ON m.material_id = tl.material_id
+	LEFT JOIN locations l ON l.location_id = m.location_id
 	WHERE
 		($1 = 0 OR m.customer_id = $1) AND
 		($2 = '' OR m.material_type::TEXT = $2) AND
 		($3 = '' OR tl.updated_at::TEXT <= $3)
-	GROUP BY m.stock_id, m.material_type
+	GROUP BY m.stock_id, l.name, m.material_type
 `,
 		b.blcFilter.customerId, b.blcFilter.materialType, b.blcFilter.dateAsOf,
 	)
@@ -142,6 +146,7 @@ func (b BalanceReport) getReportList() ([]BalanceRep, error) {
 
 		err := rows.Scan(
 			&balance.StockID,
+			&balance.LocationName,
 			&balance.MaterialType,
 			&balance.Qty,
 			&balance.TotalValue,
@@ -153,6 +158,7 @@ func (b BalanceReport) getReportList() ([]BalanceRep, error) {
 		totalValue := accLib.FormatMoney(balance.TotalValue)
 		blcList = append(blcList, BalanceRep{
 			StockID:      balance.StockID,
+			LocationName: balance.LocationName,
 			MaterialType: balance.MaterialType,
 			Qty:          strconv.Itoa(balance.Qty),
 			TotalValue:   totalValue,

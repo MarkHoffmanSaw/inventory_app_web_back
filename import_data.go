@@ -44,7 +44,7 @@ func importDataToDB(db *sql.DB) error {
 		maxQty, _ := strconv.Atoi(record[10])
 		isActive, _ := strconv.ParseBool(record[11])
 		owner := record[12]
-		unitCost, _ := strconv.ParseFloat(record[13], 64)
+		unitCost := record[13]
 
 		// Check for a customer
 		var customerId int
