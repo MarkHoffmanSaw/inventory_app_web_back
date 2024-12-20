@@ -46,54 +46,67 @@ func importDataToDB(db *sql.DB) error {
 		owner := record[12]
 		unitCost := record[13]
 
+		log.Println("===========================================================")
+		log.Println(customerName, customerCode, warehouseName, locationName, stockID, materialType, description, notes, qty, minQty, maxQty, isActive, owner, unitCost)
+		if customerName == "" {
+			log.Println("No Customer Name. Skipping...")
+			continue
+		}
+
 		// Check for a customer
 		var customerId int
-		db.QueryRow(`SELECT customer_id FROM customers
+		err := db.QueryRow(`SELECT customer_id FROM customers
 						WHERE name = $1
 						AND customer_code = $2`,
 			customerName, customerCode).
 			Scan(&customerId)
 
 		if customerId == 0 {
-			db.QueryRow(`
+			err = db.QueryRow(`
 			INSERT INTO customers(name,customer_code) VALUES($1,$2) RETURNING customer_id`,
 				customerName, customerCode).
 				Scan(&customerId)
 		}
 
+		log.Println("Error customer", err)
+
 		// Check for a warehouse
 		var warehouseId int
-		db.QueryRow(`SELECT warehouse_id FROM warehouses
+		err = db.QueryRow(`SELECT warehouse_id FROM warehouses
 						WHERE name = $1
 						`,
 			warehouseName).
 			Scan(&warehouseId)
 
 		if warehouseId == 0 {
-			db.QueryRow(`
+			err = db.QueryRow(`
 					INSERT INTO warehouses(name) VALUES($1) RETURNING warehouse_id`,
 				warehouseName).
 				Scan(&warehouseId)
 		}
 
+		log.Println("Error warehouse", err)
+
 		// Check for a location
 		var locationId int
-		db.QueryRow(`SELECT location_id FROM locations
-						WHERE location_name = $1
+		err = db.QueryRow(`SELECT location_id FROM locations
+						WHERE name = $1
 						AND warehouse_id = $2
 						`,
 			locationName, warehouseId).
 			Scan(&locationId)
 
 		if locationId == 0 {
-			db.QueryRow(`
+			err = db.QueryRow(`
 			INSERT INTO locations(name,warehouse_id) VALUES($1,$2) RETURNING location_id`,
 				locationName, warehouseId).
 				Scan(&locationId)
 		}
 
+		log.Println("Error location", err)
+
 		var materialId int
-		db.QueryRow(`
+		err = db.QueryRow(`
 			INSERT INTO materials(
 					stock_id,location_id,customer_id,material_type,
 					description,notes,quantity,min_required_quantity,
@@ -105,7 +118,9 @@ func importDataToDB(db *sql.DB) error {
 			unitCost, owner).
 			Scan(&materialId)
 
-		db.Query(`
+		log.Println("Error materials", err)
+
+		_, err = db.Query(`
 			INSERT INTO transactions_log(
 									 material_id,stock_id,quantity_change,
 									 notes,cost,job_ticket,updated_at,remaining_quantity
@@ -114,7 +129,13 @@ func importDataToDB(db *sql.DB) error {
 			materialId, stockID, qty, notes, unitCost, "job_ticket", qty,
 		)
 
-		log.Println("job done for material id", materialId)
+		log.Println("Error transactions", err)
+
+		if materialId == 0 {
+			log.Println("[DONE] ERROR: Material is not created")
+		} else {
+			log.Println("[DONE] SUCCESS: Material created")
+		}
 	}
 
 	return nil
